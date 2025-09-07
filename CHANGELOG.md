@@ -2,6 +2,32 @@
 
 All notable changes to the AnswerLens landing page will be documented in this file.
 
+## [1.1.0] - 2025-01-27
+
+### Major Restructuring
+- **Separated Analysis Tool**: Moved existing analysis application code to `src/AnalysisApp.tsx` to preserve functionality
+- **Created Landing Page**: Built new `src/App.tsx` as the main landing page entry point
+- **Fixed Branding**: Corrected "AnswerLense" typo to "AnswerLens" throughout the project
+- **Updated Page Title**: Changed HTML title to "AnswerLens - AI Exam Feedback for Students"
+
+### Landing Page Implementation
+- **Complete Landing Page**: Implemented all requested sections with proper structure and content
+- **Netlify Forms Integration**: Added proper form configuration with `data-netlify="true"` and required attributes
+- **Form State Management**: Added React state management for form submission and success states
+- **Interactive Elements**: Implemented hover effects and form validation
+
+### Enhanced Demo Section
+- **Realistic Mockups**: Created detailed exam paper and AI feedback mockups with visual elements
+- **Color-Coded Feedback**: Used red, yellow, and green color coding for different types of feedback
+- **Score Display**: Added predicted score visualization in the demo
+- **File Browser UI**: Added realistic file browser header to exam paper mockup
+
+### Improved Visual Design
+- **Enhanced Gradients**: Added sophisticated gradient backgrounds for hero and testimonial sections
+- **Better Icons**: Used Lucide React icons (Heart, Users, Zap, CheckCircle, Upload) for visual consistency
+- **Refined Typography**: Improved text hierarchy and readability across all sections
+- **Professional Spacing**: Applied consistent spacing and padding throughout
+
 ## [1.0.0] - 2025-01-27
 
 ### Added
