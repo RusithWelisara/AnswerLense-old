@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { CheckCircle, Upload, Zap, Heart, Users } from 'lucide-react';
+import { CheckCircle, Upload, Zap, Heart, Users, Menu, X, ArrowRight } from 'lucide-react';
+import AnalysisApp from './AnalysisApp';
 
 export default function App() {
   const [formData, setFormData] = useState({ name: '', email: '' });
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showAnalysisApp, setShowAnalysisApp] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,10 +21,139 @@ export default function App() {
     });
   };
 
+  // Smooth scroll function for navigation
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+      setIsMenuOpen(false);
+    }
+  };
+
+  // If showing AnalysisApp, render it instead of landing page
+  if (showAnalysisApp) {
+    return (
+      <div className="min-h-screen bg-white">
+        {/* Navigation bar for AnalysisApp */}
+        <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center">
+                <button
+                  onClick={() => setShowAnalysisApp(false)}
+                  className="text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-2"
+                >
+                  ← Back to Landing
+                </button>
+              </div>
+              <div className="text-lg font-bold text-gray-900">AnswerLens Analysis Tool</div>
+            </div>
+          </div>
+        </nav>
+        <AnalysisApp />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white">
+      {/* Enhanced Navigation Bar */}
+      <nav className="bg-white/95 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            {/* Logo */}
+            <div className="flex items-center">
+              <div className="h-8 w-8 rounded-full bg-blue-600 mr-3"></div>
+              <span className="text-xl font-bold text-gray-900">AnswerLens</span>
+            </div>
+
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center space-x-8">
+              <button
+                onClick={() => scrollToSection('hero')}
+                className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+              >
+                Home
+              </button>
+              <button
+                onClick={() => scrollToSection('demo')}
+                className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+              >
+                Demo
+              </button>
+              <button
+                onClick={() => scrollToSection('features')}
+                className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+              >
+                Features
+              </button>
+              <button
+                onClick={() => scrollToSection('waitlist')}
+                className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+              >
+                Join Waitlist
+              </button>
+              <button
+                onClick={() => setShowAnalysisApp(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Try Demo
+              </button>
+            </div>
+
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="text-gray-700 hover:text-blue-600 p-2"
+              >
+                {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Navigation Menu */}
+          {isMenuOpen && (
+            <div className="md:hidden border-t border-gray-200 bg-white">
+              <div className="px-2 pt-2 pb-3 space-y-1">
+                <button
+                  onClick={() => scrollToSection('hero')}
+                  className="block w-full text-left px-3 py-2 text-gray-700 hover:text-blue-600 font-medium"
+                >
+                  Home
+                </button>
+                <button
+                  onClick={() => scrollToSection('demo')}
+                  className="block w-full text-left px-3 py-2 text-gray-700 hover:text-blue-600 font-medium"
+                >
+                  Demo
+                </button>
+                <button
+                  onClick={() => scrollToSection('features')}
+                  className="block w-full text-left px-3 py-2 text-gray-700 hover:text-blue-600 font-medium"
+                >
+                  Features
+                </button>
+                <button
+                  onClick={() => scrollToSection('waitlist')}
+                  className="block w-full text-left px-3 py-2 text-gray-700 hover:text-blue-600 font-medium"
+                >
+                  Join Waitlist
+                </button>
+                <button
+                  onClick={() => setShowAnalysisApp(true)}
+                  className="block w-full text-left px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium mt-2"
+                >
+                  Try Demo
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </nav>
+
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-50 to-indigo-100 px-4 py-16 sm:py-24">
+      <section id="hero" className="bg-gradient-to-br from-blue-50 to-indigo-100 px-4 py-16 sm:py-24">
         <div className="mx-auto max-w-4xl text-center">
           <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
             Upload your exam papers.{' '}
@@ -32,7 +164,10 @@ export default function App() {
             Never repeat the same exam mistakes again — AnswerLens shows you exactly how to improve.
           </p>
           <div className="mt-10 flex items-center justify-center gap-x-6">
-            <button className="rounded-xl bg-blue-600 px-8 py-4 text-lg font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-colors">
+            <button 
+              onClick={() => scrollToSection('waitlist')}
+              className="rounded-xl bg-blue-600 px-8 py-4 text-lg font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-colors"
+            >
               Try Free / Join Waitlist
             </button>
           </div>
@@ -40,12 +175,29 @@ export default function App() {
       </section>
 
       {/* Demo Mockup Section */}
-      <section className="px-4 py-16 sm:py-24">
+      <section id="demo" className="px-4 py-16 sm:py-24">
         <div className="mx-auto max-w-6xl">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
               AI that learns from your answers — and helps you improve faster.
             </h2>
+            <p className="mt-4 text-lg text-gray-600">
+              See how AnswerLens analyzes your exam papers and provides personalized feedback
+            </p>
+            {/* AnalysisApp Integration Button */}
+            <div className="mt-8">
+              <button
+                onClick={() => setShowAnalysisApp(true)}
+                className="inline-flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-700 transition-colors shadow-lg"
+              >
+                <Zap className="h-5 w-5" />
+                Try Live Analysis Tool
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <p className="mt-2 text-sm text-gray-500">
+                Experience the actual AnswerLens analysis interface
+              </p>
+            </div>
           </div>
           <div className="grid gap-8 lg:grid-cols-2 lg:gap-16">
             {/* Exam Paper Mockup */}
@@ -129,7 +281,7 @@ export default function App() {
       </section>
 
       {/* Why It's Different Section */}
-      <section className="bg-gray-50 px-4 py-16 sm:py-24">
+      <section id="features" className="bg-gray-50 px-4 py-16 sm:py-24">
         <div className="mx-auto max-w-4xl">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
@@ -176,7 +328,7 @@ export default function App() {
       </section>
 
       {/* Email Capture Section */}
-      <section className="px-4 py-16 sm:py-24">
+      <section id="waitlist" className="px-4 py-16 sm:py-24">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl mb-4">
             Be the first to try it when we launch.
