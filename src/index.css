@@ -2,9 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme variables */
+:root {
+  --transition-duration: 300ms;
+}
+
+/* Dark theme styles */
+.dark {
+  color-scheme: dark;
+}
+
 /* Smooth scrolling for the entire document */
 html {
   scroll-behavior: smooth;
+}
+
+/* Theme toggle button styles */
+.theme-toggle-btn {
+  @apply inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200;
+}
+
+.theme-toggle-btn:focus {
+  @apply outline-none ring-2 ring-blue-500 dark:ring-blue-400 ring-offset-2 dark:ring-offset-gray-900;
+}
+
+/* Page transition styles */
+.page-transition-wrapper {
+  transition: opacity var(--transition-duration) ease-in-out, transform var(--transition-duration) ease-in-out;
+}
+
+/* Loading overlay styles */
+.loading-overlay {
+  @apply fixed inset-0 bg-black bg-opacity-20 dark:bg-opacity-40 flex items-center justify-center z-50;
+}
+
+.loading-spinner {
+  @apply w-8 h-8 border-4 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin;
 }
 
 /* Enhanced smooth scrolling with custom timing */
@@ -12,11 +45,24 @@ html {
   html {
     scroll-behavior: smooth;
   }
+  
+  .page-transition-wrapper {
+    transition: opacity var(--transition-duration) ease-in-out, transform var(--transition-duration) ease-in-out;
+  }
 }
 
 /* Respect user's motion preferences */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+  
+  .page-transition-wrapper {
+    transition: none !important;
+    transform: none !important;
+  }
+  
+  .loading-spinner {
+    animation: none !important;
   }
 }
