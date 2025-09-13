@@ -21,11 +21,40 @@ export default function App() {
   const [formData, setFormData] = useState({ name: '', email: '' });
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [redirectCountdown, setRedirectCountdown] = useState(0);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Netlify Forms will handle the submission
-    setIsSubmitted(true);
+    setIsSubmitting(true);
+    setSubmitError('');
+
+    // Simulate form submission (replace with actual API call if needed)
+    setTimeout(() => {
+      try {
+        // Netlify Forms will handle the actual submission
+        setIsSubmitted(true);
+        setIsSubmitting(false);
+        
+        // Start countdown for Discord redirect
+        setRedirectCountdown(3);
+        const countdownInterval = setInterval(() => {
+          setRedirectCountdown((prev) => {
+            if (prev <= 1) {
+              clearInterval(countdownInterval);
+              // Redirect to Discord in new tab after countdown
+              window.open('https://discord.gg/UDDH5Gu5', '_blank', 'noopener,noreferrer');
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } catch (error) {
+        setSubmitError('Something went wrong. Please try again.');
+        setIsSubmitting(false);
+      }
+    }, 1000); // Simulate network delay
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -213,6 +242,18 @@ export default function App() {
                 >
                   Try Demo
                 </motion.button>
+                <motion.a
+                  href="https://discord.gg/UDDH5Gu5"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-full text-lg font-semibold shadow-xl hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  aria-label="Join our Discord community (opens in new tab)"
+                >
+                  <Users className="h-5 w-5" />
+                  Join Our Discord
+                </motion.a>
               </div>
             </motion.div>
 
@@ -463,6 +504,7 @@ export default function App() {
                   value={formData.name}
                   onChange={handleInputChange}
                   required
+                  disabled={isSubmitting}
                   className="w-full rounded-2xl border-0 bg-white/90 backdrop-blur px-6 py-4 text-gray-900 placeholder-gray-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-white/50 text-lg"
                 />
                 <input
@@ -472,16 +514,34 @@ export default function App() {
                   value={formData.email}
                   onChange={handleInputChange}
                   required
+                  disabled={isSubmitting}
                   className="w-full rounded-2xl border-0 bg-white/90 backdrop-blur px-6 py-4 text-gray-900 placeholder-gray-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-white/50 text-lg"
                 />
               </div>
+              {submitError && (
+                <motion.p
+                  className="text-red-200 text-center text-sm"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                >
+                  {submitError}
+                </motion.p>
+              )}
               <motion.button
                 type="submit"
-                className="w-full bg-white text-blue-600 px-8 py-4 rounded-2xl text-lg font-bold hover:bg-gray-50 transition-colors shadow-lg"
+                disabled={isSubmitting}
+                className="w-full bg-white text-blue-600 px-8 py-4 rounded-2xl text-lg font-bold hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg flex items-center justify-center gap-2"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                Join Waitlist
+                {isSubmitting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                    Joining...
+                  </>
+                ) : (
+                  'Join Waitlist'
+                )}
               </motion.button>
             </motion.form>
           ) : (
@@ -493,9 +553,21 @@ export default function App() {
             >
               <CheckCircle className="h-16 w-16 text-white mx-auto mb-4" />
               <h3 className="text-2xl font-bold text-white mb-2">Thank You!</h3>
-              <p className="text-blue-100">
-                You're on the waitlist. We'll notify you when AnswerLens is ready!
+              <p className="text-blue-100 mb-4">
+                You're on the waitlist! We'll notify you when AnswerLens is ready.
               </p>
+              {redirectCountdown > 0 && (
+                <motion.div
+                  className="text-center"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                >
+                  <p className="text-blue-100 text-sm mb-2">
+                    Redirecting to our Discord community in {redirectCountdown} seconds...
+                  </p>
+                  <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
+                </motion.div>
+              )}
             </motion.div>
           )}
         </div>
