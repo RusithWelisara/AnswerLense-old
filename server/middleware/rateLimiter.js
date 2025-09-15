@@ -25,8 +25,13 @@ export const generalLimiter = rateLimit({
     }
     return false;
   },
-  onLimitReached: (req) => {
+  handler: (req, res) => {
     logger.warn(`Rate limit exceeded for IP: ${req.ip} on ${req.originalUrl}`);
+    res.status(429).json({
+      success: false,
+      error: 'Too many requests from this IP, please try again later.',
+      retryAfter: Math.ceil(environment.RATE_LIMIT_WINDOW / 1000 / 60), // minutes
+    });
   },
 });
 
@@ -42,8 +47,13 @@ export const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true, // Don't count successful requests
-  onLimitReached: (req) => {
+  handler: (req, res) => {
     logger.warn(`Auth rate limit exceeded for IP: ${req.ip} on ${req.originalUrl}`);
+    res.status(429).json({
+      success: false,
+      error: 'Too many authentication attempts, please try again later.',
+      retryAfter: 15
+    });
   },
 });
 
@@ -58,8 +68,13 @@ export const uploadLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  onLimitReached: (req) => {
+  handler: (req, res) => {
     logger.warn(`Upload rate limit exceeded for IP: ${req.ip} on ${req.originalUrl}`);
+    res.status(429).json({
+      success: false,
+      error: 'Too many file uploads, please try again later.',
+      retryAfter: 10
+    });
   },
 });
 
@@ -74,8 +89,13 @@ export const analysisLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  onLimitReached: (req) => {
+  handler: (req, res) => {
     logger.warn(`Analysis rate limit exceeded for IP: ${req.ip} on ${req.originalUrl}`);
+    res.status(429).json({
+      success: false,
+      error: 'Analysis limit reached. Please wait before requesting more analyses.',
+      retryAfter: 60
+    });
   },
 });
 

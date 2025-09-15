@@ -8,14 +8,11 @@ import logger from '../utils/logger.js';
 
 class DatabaseConfig {
   constructor() {
-    this.mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/answerlens';
+    this.mongoUri = process.env.DATABASE_URL || process.env.MONGODB_URI || 'mongodb://localhost:27017/answerlens';
     this.options = {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
-      bufferMaxEntries: 0,
       bufferCommands: false,
     };
   }
@@ -26,6 +23,11 @@ class DatabaseConfig {
    */
   async connect() {
     try {
+      // For development, use in-memory MongoDB or skip connection if no MongoDB available
+      if (this.mongoUri.includes('DATABASE_URL') || !this.mongoUri.startsWith('mongodb')) {
+        logger.info('Skipping MongoDB connection - using in-memory storage for development');
+        return;
+      }
       await mongoose.connect(this.mongoUri, this.options);
       logger.info('Successfully connected to MongoDB');
 

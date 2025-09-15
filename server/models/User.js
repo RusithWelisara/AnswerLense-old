@@ -78,6 +78,39 @@ const userSchema = new mongoose.Schema({
     type: Date,
     select: false,
   },
+
+  // Refresh Token Storage (for secure token rotation)
+  refreshTokens: {
+    type: [{
+      tokenHash: {
+        type: String,
+        required: true,
+      },
+      jti: {
+        type: String,
+        required: true,
+        unique: true,
+      },
+      expiresAt: {
+        type: Date,
+        required: true,
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now,
+      },
+      deviceInfo: {
+        userAgent: String,
+        ip: String,
+      },
+      isRevoked: {
+        type: Boolean,
+        default: false,
+      },
+    }],
+    select: false,
+    default: [],
+  },
   
   // Email Verification
   emailVerificationToken: {
@@ -172,6 +205,83 @@ userSchema.methods.incrementAnalysisCount = async function() {
 userSchema.methods.updateLastLogin = async function() {
   this.lastLoginAt = new Date();
   return this.save();
+};
+
+// Instance method to add refresh token
+userSchema.methods.addRefreshToken = async function(tokenHash, jti, expiresAt, deviceInfo = {}) {
+  // Remove expired tokens
+  this.refreshTokens = this.refreshTokens.filter(token => 
+    token.expiresAt > new Date() && !token.isRevoked
+  );
+
+  // Limit to maximum 5 active refresh tokens per user
+  if (this.refreshTokens.length >= 5) {
+    this.refreshTokens.sort((a, b) => a.createdAt - b.createdAt);
+    this.refreshTokens.shift(); // Remove oldest token
+  }
+
+  // Add new refresh token
+  this.refreshTokens.push({
+    tokenHash,
+    jti,
+    expiresAt,
+    deviceInfo,
+  });
+
+  return this.save();
+};
+
+// Instance method to validate and consume refresh token
+userSchema.methods.validateRefreshToken = async function(tokenHash, jti) {
+  const tokenRecord = this.refreshTokens.find(token => 
+    token.jti === jti && !token.isRevoked && token.expiresAt > new Date()
+  );
+
+  if (!tokenRecord) {
+    return { valid: false, compromised: false };
+  }
+
+  // Check if token hash matches
+  const isValidHash = await bcrypt.compare(tokenHash, tokenRecord.tokenHash);
+  
+  if (!isValidHash) {
+    // Potential token reuse attack - revoke all tokens
+    await this.revokeAllRefreshTokens();
+    return { valid: false, compromised: true };
+  }
+
+  return { valid: true, compromised: false, tokenRecord };
+};
+
+// Instance method to revoke specific refresh token
+userSchema.methods.revokeRefreshToken = async function(jti) {
+  const token = this.refreshTokens.find(token => token.jti === jti);
+  if (token) {
+    token.isRevoked = true;
+  }
+  return this.save();
+};
+
+// Instance method to revoke all refresh tokens
+userSchema.methods.revokeAllRefreshTokens = async function() {
+  this.refreshTokens.forEach(token => {
+    token.isRevoked = true;
+  });
+  return this.save();
+};
+
+// Instance method to clean up expired tokens
+userSchema.methods.cleanupExpiredTokens = async function() {
+  const beforeCount = this.refreshTokens.length;
+  this.refreshTokens = this.refreshTokens.filter(token => 
+    token.expiresAt > new Date() && !token.isRevoked
+  );
+  
+  if (beforeCount !== this.refreshTokens.length) {
+    await this.save();
+  }
+  
+  return this.refreshTokens.length;
 };
 
 // Static method to find by email
