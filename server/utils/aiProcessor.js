@@ -3,12 +3,25 @@ import logger from './logger.js';
 
 class AIProcessor {
   constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    });
-    
+    this.openai = null; // Initialize lazily
     this.maxTokens = 4000; // GPT-4 context limit consideration
     this.temperature = 0.3; // Deterministic academic feedback
+  }
+
+  /**
+   * Get OpenAI instance, initializing it if needed
+   * @returns {OpenAI} OpenAI instance
+   */
+  getOpenAI() {
+    if (!this.openai) {
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OpenAI API key is required. Please set OPENAI_API_KEY environment variable.');
+      }
+      this.openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY
+      });
+    }
+    return this.openai;
   }
 
   /**

@@ -1,6 +1,8 @@
-import pdf from 'pdf-parse';
 import sharp from 'sharp';
 import logger from './logger.js';
+
+// Dynamic import for pdf-parse to avoid initialization issues
+let pdfParse;
 
 class FileProcessor {
   constructor() {
@@ -159,11 +161,11 @@ class FileProcessor {
    * @param {Array<string>} filePaths - Array of file paths to clean up
    */
   async cleanupFiles(filePaths) {
-    const fs = require('fs').promises;
+    const { unlink } = await import('fs/promises');
     
     for (const filePath of filePaths) {
       try {
-        await fs.unlink(filePath);
+        await unlink(filePath);
         logger.info(`Cleaned up temporary file: ${filePath}`);
       } catch (error) {
         logger.warn(`Failed to cleanup file ${filePath}:`, error.message);
