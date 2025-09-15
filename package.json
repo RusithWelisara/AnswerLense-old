@@ -17,6 +17,7 @@
     "docker:logs": "docker-compose logs -f backend"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
@@ -24,9 +25,12 @@
     "framer-motion": "^12.23.12",
     "helmet": "^8.1.0",
     "html-pdf-node": "^1.0.8",
+    "joi": "^18.0.1",
+    "jsonwebtoken": "^9.0.2",
     "jspdf": "^3.0.2",
     "lucide-react": "^0.344.0",
     "mongoose": "^8.18.1",
+    "morgan": "^1.10.1",
     "multer": "^1.4.5-lts.1",
     "openai": "^5.20.2",
     "pdf-parse": "^1.1.1",
