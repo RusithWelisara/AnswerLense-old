@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const analysisSchema = new mongoose.Schema({
   // File information
@@ -96,4 +96,4 @@ analysisSchema.pre('save', function(next) {
 analysisSchema.index({ createdAt: -1 });
 analysisSchema.index({ ipAddress: 1, createdAt: -1 });
 
-module.exports = mongoose.model('Analysis', analysisSchema);
+export default mongoose.model('Analysis', analysisSchema);

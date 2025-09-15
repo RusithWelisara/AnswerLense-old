@@ -1,8 +1,9 @@
-const express = require('express');
+import express from 'express';
+import Analysis from '../models/Analysis.js';
+import logger from '../utils/logger.js';
+import { feedbackLimiter } from '../middleware/rateLimiter.js';
+
 const router = express.Router();
-const Analysis = require('../models/Analysis');
-const logger = require('../utils/logger');
-const { feedbackLimiter } = require('../middleware/rateLimiter');
 
 /**
  * POST /api/feedback
@@ -147,4 +148,4 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

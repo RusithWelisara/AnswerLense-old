@@ -1,5 +1,5 @@
-const app = require('./app');
-const logger = require('./utils/logger');
+import app from './app.js';
+import logger from './utils/logger.js';
 
 const PORT = process.env.PORT || 3001;
 
@@ -38,4 +38,4 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
-module.exports = server;
+export default server;

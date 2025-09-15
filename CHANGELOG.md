@@ -2,6 +2,55 @@
 
 All notable changes to the AnswerLens landing page will be documented in this file.
 
+## [2.1.0] - 2025-01-27
+
+### Major Backend Refactor - ESM Conversion and Production Fixes
+
+#### Complete ESM Migration
+- **Module System Conversion**: Converted entire backend from CommonJS to ESM
+  - Updated all `require()` statements to `import` statements
+  - Changed all `module.exports` to `export default` or named exports
+  - Added `.js` extensions to all local imports for ESM compatibility
+  - Fixed `__dirname` usage in ESM with `fileURLToPath` and `import.meta.url`
+
+#### Updated File Structure
+- **Database Configuration**: `server/config/database.js` - ESM imports/exports
+- **Models**: `server/models/Analysis.js`, `server/models/ApiLog.js` - ESM compatible
+- **Utilities**: All files in `server/utils/` converted to ESM
+- **Middleware**: All files in `server/middleware/` converted to ESM
+- **Routes**: All files in `server/routes/` converted to ESM
+- **Main Files**: `server/app.js`, `server/server.js` - Full ESM conversion
+
+#### Scripts and Development Environment
+- **Package.json Scripts**: Updated all Node.js scripts to use `--experimental-modules` flag
+- **Development Server**: Fixed `npm run dev` to properly run both frontend and backend
+- **Nodemon Configuration**: Updated to work with ESM modules
+- **Production Scripts**: Ensured `npm start` works in production environment
+
+#### Error Handling and Logging
+- **Winston Logger**: Verified ESM compatibility and proper error handling
+- **API Routes**: Enhanced try/catch blocks and async error handling
+- **Database Connections**: Improved error handling for MongoDB connections
+- **File Processing**: Robust error handling for OCR and AI processing
+
+#### Docker and Deployment
+- **Dockerfile**: Updated CMD to use `--experimental-modules` flag
+- **Docker Compose**: Verified compatibility with ESM backend
+- **Health Checks**: Maintained proper health check functionality
+- **Environment Variables**: Updated `.env.example` with correct development URLs
+
+#### Technical Improvements
+- **Import Consistency**: All imports now use proper ESM syntax with `.js` extensions
+- **File Extensions**: Consistent `.js` extensions throughout backend
+- **Error Recovery**: Enhanced error handling and recovery mechanisms
+- **Performance**: Optimized module loading and dependency management
+
+#### Production Readiness
+- **Clean Codebase**: Removed all CommonJS remnants
+- **Modern JavaScript**: Full ES6+ module system implementation
+- **Scalability**: Improved module structure for better maintainability
+- **Monitoring**: Enhanced logging and error tracking capabilities
+
 ## [2.0.0] - 2025-01-27
 
 ### Major Landing Page Upgrade - Professional Conversion-Focused Site

@@ -1,5 +1,5 @@
-const rateLimit = require('express-rate-limit');
-const logger = require('../utils/logger');
+import rateLimit from 'express-rate-limit';
+import logger from '../utils/logger.js';
 
 // Create different rate limiters for different endpoints
 const createRateLimiter = (options = {}) => {
@@ -48,8 +48,4 @@ const feedbackLimiter = createRateLimiter({
   }
 });
 
-module.exports = {
-  generalLimiter,
-  uploadLimiter,
-  feedbackLimiter
-};
+export { generalLimiter, uploadLimiter, feedbackLimiter };

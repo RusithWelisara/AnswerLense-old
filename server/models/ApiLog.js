@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const apiLogSchema = new mongoose.Schema({
   method: {
@@ -41,4 +41,4 @@ const apiLogSchema = new mongoose.Schema({
 apiLogSchema.index({ timestamp: -1 });
 apiLogSchema.index({ timestamp: 1 }, { expireAfterSeconds: 2592000 }); // 30 days
 
-module.exports = mongoose.model('ApiLog', apiLogSchema);
+export default mongoose.model('ApiLog', apiLogSchema);

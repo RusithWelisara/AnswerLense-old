@@ -1,7 +1,8 @@
-const express = require('express');
+import express from 'express';
+import Analysis from '../models/Analysis.js';
+import logger from '../utils/logger.js';
+
 const router = express.Router();
-const Analysis = require('../models/Analysis');
-const logger = require('../utils/logger');
 
 /**
  * GET /api/results/:id
@@ -101,4 +102,4 @@ router.get('/', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

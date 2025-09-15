@@ -1,6 +1,6 @@
-const Tesseract = require('tesseract.js');
-const sharp = require('sharp');
-const logger = require('./logger');
+import Tesseract from 'tesseract.js';
+import sharp from 'sharp';
+import logger from './logger.js';
 
 class OCRProcessor {
   constructor() {
@@ -207,4 +207,4 @@ class OCRProcessor {
   }
 }
 
-module.exports = new OCRProcessor();
+export default new OCRProcessor();

@@ -1,19 +1,24 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const path = require('path');
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get __dirname equivalent in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Import utilities and middleware
-const connectDB = require('./config/database');
-const logger = require('./utils/logger');
-const apiLogger = require('./middleware/apiLogger');
-const { generalLimiter } = require('./middleware/rateLimiter');
+import connectDB from './config/database.js';
+import logger from './utils/logger.js';
+import apiLogger from './middleware/apiLogger.js';
+import { generalLimiter } from './middleware/rateLimiter.js';
 
 // Import routes
-const uploadRoutes = require('./routes/upload');
-const resultsRoutes = require('./routes/results');
-const feedbackRoutes = require('./routes/feedback');
+import uploadRoutes from './routes/upload.js';
+import resultsRoutes from './routes/results.js';
+import feedbackRoutes from './routes/feedback.js';
 
 // Initialize Express app
 const app = express();
@@ -140,4 +145,4 @@ app.use('*', (req, res) => {
   });
 });
 
-module.exports = app;
+export default app;

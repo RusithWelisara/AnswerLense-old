@@ -1,15 +1,17 @@
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs').promises;
+import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import { promises as fs } from 'fs';
+
+import fileProcessor from '../utils/fileProcessor.js';
+import ocrProcessor from '../utils/ocrProcessor.js';
+import aiProcessor from '../utils/aiProcessor.js';
+import Analysis from '../models/Analysis.js';
+import logger from '../utils/logger.js';
+import { uploadLimiter } from '../middleware/rateLimiter.js';
+
 const router = express.Router();
 
-const fileProcessor = require('../utils/fileProcessor');
-const ocrProcessor = require('../utils/ocrProcessor');
-const aiProcessor = require('../utils/aiProcessor');
-const Analysis = require('../models/Analysis');
-const logger = require('../utils/logger');
-const { uploadLimiter } = require('../middleware/rateLimiter');
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage(); // Store in memory for processing
@@ -192,4 +194,4 @@ router.post('/', uploadLimiter, upload.single('document'), async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

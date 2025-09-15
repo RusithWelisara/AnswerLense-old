@@ -1,6 +1,6 @@
-const pdf = require('pdf-parse');
-const sharp = require('sharp');
-const logger = require('./logger');
+import pdf from 'pdf-parse';
+import sharp from 'sharp';
+import logger from './logger.js';
 
 class FileProcessor {
   constructor() {
@@ -172,4 +172,4 @@ class FileProcessor {
   }
 }
 
-module.exports = new FileProcessor();
+export default new FileProcessor();

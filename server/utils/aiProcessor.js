@@ -1,5 +1,5 @@
-const OpenAI = require('openai');
-const logger = require('./logger');
+import OpenAI from 'openai';
+import logger from './logger.js';
 
 class AIProcessor {
   constructor() {
@@ -326,4 +326,4 @@ Focus on:
   }
 }
 
-module.exports = new AIProcessor();
+export default new AIProcessor();

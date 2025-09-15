@@ -1,5 +1,5 @@
-const ApiLog = require('../models/ApiLog');
-const logger = require('../utils/logger');
+import ApiLog from '../models/ApiLog.js';
+import logger from '../utils/logger.js';
 
 /**
  * Middleware to log API requests to MongoDB
@@ -69,4 +69,4 @@ const apiLogger = (req, res, next) => {
   next();
 };
 
-module.exports = apiLogger;
+export default apiLogger;
