@@ -1,451 +1,329 @@
-import OpenAI from 'openai';
-import logger from './logger.js';
-import environment from '../config/environment.js';
-
-/**
- * AI Processing utility for content analysis using OpenAI
- * Based on Replit OpenAI integration blueprint
- */
-
-// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-const OPENAI_MODEL = environment.OPENAI_MODEL || 'gpt-5';
+const OpenAI = require('openai');
+const logger = require('./logger');
 
 class AIProcessor {
   constructor() {
-    if (!environment.OPENAI_API_KEY) {
-      throw new Error('OpenAI API key is required');
-    }
-    
     this.openai = new OpenAI({
-      apiKey: environment.OPENAI_API_KEY,
+      apiKey: process.env.OPENAI_API_KEY
     });
     
-    this.defaultModel = OPENAI_MODEL;
-    this.maxTokens = 4000;
-    this.temperature = 0.7;
-    this.maxBase64ImageSize = 20 * 1024 * 1024; // 20MB limit for base64 images
+    this.maxTokens = 4000; // GPT-4 context limit consideration
+    this.temperature = 0.3; // Deterministic academic feedback
   }
 
   /**
-   * Analyze extracted text content using AI
-   * @param {string} extractedText - Text extracted from OCR
+   * Analyze document text with AI
+   * @param {string} text - Extracted text from document
    * @param {Object} options - Analysis options
-   * @returns {Promise<Object>} AI analysis result
+   * @returns {Promise<Object>} AI analysis results
    */
-  async analyzeContent(extractedText, options = {}) {
+  async analyzeDocument(text, options = {}) {
     const startTime = Date.now();
     
     try {
-      const {
-        subject = 'general',
-        difficulty = 'intermediate',
-        language = 'en',
-        includeImages = false,
-        customPrompt = null,
-      } = options;
-      
-      logger.info(`Starting AI analysis for ${subject} content (${difficulty} level)`);
-      
-      // Build the analysis prompt
-      const prompt = customPrompt || this.buildAnalysisPrompt(extractedText, subject, difficulty, language);
-      
-      // Prepare messages for the AI
-      const messages = [
-        {
-          role: 'system',
-          content: this.getSystemPrompt(subject, difficulty, language),
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ];
-      
-      // Make the API call
-      const response = await this.openai.chat.completions.create({
-        model: this.defaultModel,
-        messages: messages,
-        max_tokens: this.maxTokens,
-        temperature: this.temperature,
-        response_format: { type: "json_object" },
-      });
-      
+      logger.info('Starting AI analysis of document');
+
+      // Validate input
+      if (!text || text.trim().length < 50) {
+        throw new Error('Insufficient text content for analysis');
+      }
+
+      // Handle long documents by chunking
+      const chunks = this.chunkText(text);
+      let analysis, suggestions;
+
+      if (chunks.length === 1) {
+        // Single chunk analysis
+        const result = await this.analyzeSingleChunk(chunks[0], options);
+        analysis = result.analysis;
+        suggestions = result.suggestions;
+      } else {
+        // Multi-chunk analysis with summarization
+        const result = await this.analyzeMultipleChunks(chunks, options);
+        analysis = result.analysis;
+        suggestions = result.suggestions;
+      }
+
       const processingTime = Date.now() - startTime;
-      
-      // Parse the AI response with error handling
-      const aiResponse = this.parseJSONResponse(response.choices[0]?.message?.content);
-      
-      // Guard against missing usage data
-      const tokensUsed = {
-        input: response.usage?.prompt_tokens || 0,
-        output: response.usage?.completion_tokens || 0,
+      logger.info(`AI analysis completed in ${processingTime}ms`);
+
+      return {
+        analysis,
+        suggestions,
+        processingTime,
+        chunksProcessed: chunks.length
       };
-      
-      // Structure the result
-      const result = {
-        summary: aiResponse.summary || 'No summary provided',
-        explanations: this.formatExplanations(aiResponse.explanations || []),
-        insights: aiResponse.insights || [],
-        studyTips: aiResponse.study_tips || aiResponse.studyTips || [],
-        relatedConcepts: aiResponse.related_concepts || aiResponse.relatedConcepts || [],
-        model: this.defaultModel,
-        modelVersion: 'latest',
-        processingTime: processingTime,
-        tokensUsed: tokensUsed,
-        metadata: {
-          subject: subject,
-          difficulty: difficulty,
-          language: language,
-          totalTokens: response.usage?.total_tokens || tokensUsed.input + tokensUsed.output,
-        },
-      };
-      
-      logger.info(`AI analysis completed in ${processingTime}ms, used ${result.tokensUsed.input + result.tokensUsed.output} tokens`);
-      
-      return result;
-      
+
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      logger.error('AI analysis failed:', error);
-      
+      logger.error(`AI analysis failed after ${processingTime}ms:`, error);
       throw new Error(`AI analysis failed: ${error.message}`);
     }
   }
 
   /**
-   * Build analysis prompt based on content and parameters
-   * @param {string} text - Extracted text to analyze
-   * @param {string} subject - Subject area
-   * @param {string} difficulty - Difficulty level
-   * @param {string} language - Response language
+   * Chunk text into manageable pieces for AI processing
+   * @param {string} text - Input text
+   * @returns {Array<string>} Text chunks
+   */
+  chunkText(text) {
+    const maxChunkLength = 3000; // Conservative limit for GPT-4
+    const chunks = [];
+    
+    if (text.length <= maxChunkLength) {
+      return [text];
+    }
+
+    // Split by paragraphs first
+    const paragraphs = text.split(/\n\s*\n/);
+    let currentChunk = '';
+
+    for (const paragraph of paragraphs) {
+      if ((currentChunk + paragraph).length <= maxChunkLength) {
+        currentChunk += (currentChunk ? '\n\n' : '') + paragraph;
+      } else {
+        if (currentChunk) {
+          chunks.push(currentChunk);
+          currentChunk = paragraph;
+        } else {
+          // Paragraph is too long, split by sentences
+          const sentences = paragraph.split(/[.!?]+/);
+          let sentenceChunk = '';
+          
+          for (const sentence of sentences) {
+            if ((sentenceChunk + sentence).length <= maxChunkLength) {
+              sentenceChunk += (sentenceChunk ? '. ' : '') + sentence;
+            } else {
+              if (sentenceChunk) {
+                chunks.push(sentenceChunk);
+                sentenceChunk = sentence;
+              } else {
+                // Even single sentence is too long, force split
+                chunks.push(sentence.substring(0, maxChunkLength));
+                sentenceChunk = sentence.substring(maxChunkLength);
+              }
+            }
+          }
+          
+          if (sentenceChunk) {
+            currentChunk = sentenceChunk;
+          }
+        }
+      }
+    }
+
+    if (currentChunk) {
+      chunks.push(currentChunk);
+    }
+
+    logger.info(`Text split into ${chunks.length} chunks for processing`);
+    return chunks;
+  }
+
+  /**
+   * Analyze a single text chunk
+   * @param {string} text - Text chunk
+   * @param {Object} options - Analysis options
+   * @returns {Promise<Object>} Analysis result
+   */
+  async analyzeSingleChunk(text, options) {
+    const prompt = this.buildAnalysisPrompt(text, options);
+    
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert academic reviewer and writing coach. Provide detailed, constructive feedback on academic documents, focusing on correctness, clarity, grammar, structure, and areas for improvement.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: this.temperature,
+      max_tokens: this.maxTokens
+    });
+
+    return this.parseAIResponse(response.choices[0].message.content);
+  }
+
+  /**
+   * Analyze multiple text chunks and synthesize results
+   * @param {Array<string>} chunks - Text chunks
+   * @param {Object} options - Analysis options
+   * @returns {Promise<Object>} Combined analysis result
+   */
+  async analyzeMultipleChunks(chunks, options) {
+    logger.info(`Analyzing ${chunks.length} chunks separately`);
+    
+    // Analyze each chunk
+    const chunkAnalyses = await Promise.all(
+      chunks.map((chunk, index) => 
+        this.analyzeSingleChunk(chunk, { ...options, chunkIndex: index + 1 })
+      )
+    );
+
+    // Synthesize results
+    const synthesisPrompt = this.buildSynthesisPrompt(chunkAnalyses, chunks.length);
+    
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert academic reviewer. Synthesize multiple chunk analyses into a coherent overall assessment.'
+        },
+        {
+          role: 'user',
+          content: synthesisPrompt
+        }
+      ],
+      temperature: this.temperature,
+      max_tokens: this.maxTokens
+    });
+
+    return this.parseAIResponse(response.choices[0].message.content);
+  }
+
+  /**
+   * Build analysis prompt for AI
+   * @param {string} text - Text to analyze
+   * @param {Object} options - Analysis options
    * @returns {string} Formatted prompt
    */
-  buildAnalysisPrompt(text, subject, difficulty, language) {
-    return `
-Please analyze the following ${subject} content at a ${difficulty} level and provide a comprehensive educational analysis.
+  buildAnalysisPrompt(text, options) {
+    const { chunkIndex, documentType = 'academic document' } = options;
+    
+    let prompt = `Please analyze the following ${documentType}${chunkIndex ? ` (part ${chunkIndex})` : ''} and provide detailed feedback in the following JSON format:
 
-Text to analyze:
+{
+  "analysis": "Overall assessment of the document's quality, strengths, and areas for improvement",
+  "suggestions": [
+    {
+      "category": "grammar|structure|content|clarity|style",
+      "content": "Specific suggestion for improvement",
+      "priority": "high|medium|low"
+    }
+  ]
+}
+
+Focus on:
+1. **Correctness**: Factual accuracy, logical consistency, proper citations
+2. **Clarity**: Clear expression of ideas, appropriate vocabulary, coherent flow
+3. **Grammar**: Spelling, punctuation, sentence structure, word choice
+4. **Structure**: Organization, paragraph development, transitions
+5. **Academic Standards**: Appropriate tone, evidence support, critical analysis
+
+Document text:
 """
 ${text}
 """
 
-Please provide your analysis in JSON format with the following structure:
+Provide constructive, specific feedback that will help improve the document's quality.`;
+
+    return prompt;
+  }
+
+  /**
+   * Build synthesis prompt for multiple chunk analyses
+   * @param {Array<Object>} analyses - Individual chunk analyses
+   * @param {number} totalChunks - Total number of chunks
+   * @returns {string} Synthesis prompt
+   */
+  buildSynthesisPrompt(analyses, totalChunks) {
+    const analysesText = analyses.map((analysis, index) => 
+      `Chunk ${index + 1} Analysis:\n${JSON.stringify(analysis, null, 2)}`
+    ).join('\n\n');
+
+    return `Based on the following ${totalChunks} individual chunk analyses of a document, provide a comprehensive overall assessment in JSON format:
+
+${analysesText}
+
+Synthesize these analyses into:
 {
-  "summary": "A clear, concise summary of the main concepts or content",
-  "explanations": [
+  "analysis": "Comprehensive overall assessment that considers patterns across all chunks",
+  "suggestions": [
     {
-      "id": "1",
-      "topic": "Main concept or topic name",
-      "content": "Detailed explanation of the concept",
-      "confidence": 0.95,
-      "type": "concept_explanation"
+      "category": "grammar|structure|content|clarity|style",
+      "content": "Consolidated suggestion based on patterns across chunks",
+      "priority": "high|medium|low"
     }
-  ],
-  "insights": ["Key insights or important points"],
-  "study_tips": ["Practical study recommendations"],
-  "related_concepts": ["Related topics to explore"]
+  ]
 }
 
-Explanation types can be: "concept_explanation", "solution_steps", "related_topics", "practical_application", "historical_context", "key_points"
-
-Please ensure:
-1. Content is appropriate for ${difficulty} level
-2. Explanations are clear and educational
-3. Include practical study tips
-4. Suggest related concepts for further learning
-5. Respond in ${language === 'en' ? 'English' : language}
-`;
+Focus on:
+- Overall document coherence and flow
+- Recurring issues across chunks
+- Document-wide structural concerns
+- Prioritized recommendations for improvement`;
   }
 
   /**
-   * Get system prompt based on subject and parameters
-   * @param {string} subject - Subject area
-   * @param {string} difficulty - Difficulty level
-   * @param {string} language - Response language
-   * @returns {string} System prompt
+   * Parse AI response into structured format
+   * @param {string} response - Raw AI response
+   * @returns {Object} Parsed analysis and suggestions
    */
-  getSystemPrompt(subject, difficulty, language) {
-    return `You are an expert educational AI assistant specializing in ${subject}. Your role is to analyze content and provide comprehensive, educational explanations suitable for ${difficulty} level learners.
-
-Key responsibilities:
-1. Provide accurate, well-structured analysis
-2. Adapt explanations to the ${difficulty} difficulty level
-3. Focus on educational value and clarity
-4. Include practical learning recommendations
-5. Maintain academic integrity and accuracy
-6. Respond in valid JSON format only
-
-Always provide educational content that helps students understand concepts better.`;
-  }
-
-  /**
-   * Parse JSON response with error handling and schema validation
-   * @param {string} content - JSON content to parse
-   * @returns {Object} Parsed response or safe fallback
-   */
-  parseJSONResponse(content) {
-    if (!content) {
-      logger.warn('Empty response content from AI');
-      return this.getEmptyResponse();
-    }
-    
+  parseAIResponse(response) {
     try {
-      const parsed = JSON.parse(content);
+      // Try to parse as JSON first
+      const parsed = JSON.parse(response);
       
-      // Basic schema validation
-      if (typeof parsed !== 'object' || parsed === null) {
-        throw new Error('Response is not a valid object');
-      }
-      
-      return parsed;
-    } catch (error) {
-      logger.error('Failed to parse AI response JSON:', error);
-      logger.debug('Malformed content:', content.substring(0, 500));
-      
-      // Return safe fallback response
-      return this.getEmptyResponse();
-    }
-  }
-  
-  /**
-   * Get empty/fallback response structure
-   * @returns {Object} Safe fallback response
-   */
-  getEmptyResponse() {
-    return {
-      summary: 'Analysis could not be completed due to processing error',
-      explanations: [],
-      insights: ['Please try again with different content'],
-      study_tips: ['Content may need to be clearer or shorter'],
-      related_concepts: []
-    };
-  }
-  
-  /**
-   * Validate base64 image size and format
-   * @param {string} base64Image - Base64 encoded image
-   * @returns {Object} Validation result
-   */
-  validateBase64Image(base64Image) {
-    const validation = {
-      isValid: true,
-      errors: [],
-      size: 0
-    };
-    
-    if (!base64Image || typeof base64Image !== 'string') {
-      validation.isValid = false;
-      validation.errors.push('Invalid base64 image format');
-      return validation;
-    }
-    
-    // Calculate approximate size (base64 is ~33% larger than binary)
-    const sizeEstimate = (base64Image.length * 3) / 4;
-    validation.size = sizeEstimate;
-    
-    if (sizeEstimate > this.maxBase64ImageSize) {
-      validation.isValid = false;
-      validation.errors.push(`Image size (${Math.round(sizeEstimate / 1024 / 1024)}MB) exceeds maximum allowed (${Math.round(this.maxBase64ImageSize / 1024 / 1024)}MB)`);
-    }
-    
-    // Basic base64 format validation
-    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64Image)) {
-      validation.isValid = false;
-      validation.errors.push('Invalid base64 encoding format');
-    }
-    
-    return validation;
-  }
-
-  /**
-   * Format explanations to ensure consistent structure
-   * @param {Array} explanations - Raw explanations from AI
-   * @returns {Array} Formatted explanations
-   */
-  formatExplanations(explanations) {
-    return explanations.map((exp, index) => ({
-      id: exp.id || (index + 1).toString(),
-      topic: exp.topic || 'Unnamed Topic',
-      content: exp.content || exp.explanation || '',
-      confidence: Math.min(Math.max(exp.confidence || 0.8, 0), 1),
-      type: exp.type || 'concept_explanation',
-    }));
-  }
-
-  /**
-   * Analyze image content directly (if image analysis is needed)
-   * @param {string} base64Image - Base64 encoded image
-   * @param {Object} options - Analysis options
-   * @returns {Promise<Object>} Image analysis result
-   */
-  async analyzeImage(base64Image, options = {}) {
-    const startTime = Date.now();
-    
-    try {
-      // Validate base64 image first
-      const validation = this.validateBase64Image(base64Image);
-      if (!validation.isValid) {
-        throw new Error(`Image validation failed: ${validation.errors.join(', ')}`);
-      }
-      
-      const {
-        subject = 'general',
-        difficulty = 'intermediate',
-        language = 'en',
-      } = options;
-      
-      logger.info(`Starting direct image analysis with AI (${Math.round(validation.size / 1024)}KB)`);
-      
-      const response = await this.openai.chat.completions.create({
-        model: this.defaultModel,
-        messages: [
-          {
-            role: 'system',
-            content: this.getSystemPrompt(subject, difficulty, language),
-          },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: `Analyze this ${subject} image at a ${difficulty} level. Extract and explain any text, diagrams, equations, or educational content. Provide your analysis in the same JSON format as text analysis.`,
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:image/jpeg;base64,${base64Image}`,
-                },
-              },
-            ],
-          },
-        ],
-        max_tokens: this.maxTokens,
-        temperature: this.temperature,
-        response_format: { type: "json_object" },
-      });
-      
-      const processingTime = Date.now() - startTime;
-      const aiResponse = this.parseJSONResponse(response.choices[0]?.message?.content);
-      
-      // Guard against missing usage data
-      const tokensUsed = {
-        input: response.usage?.prompt_tokens || 0,
-        output: response.usage?.completion_tokens || 0,
+      return {
+        analysis: parsed.analysis || 'Analysis not provided',
+        suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : []
       };
-      
-      const result = {
-        summary: aiResponse.summary || 'No summary provided',
-        explanations: this.formatExplanations(aiResponse.explanations || []),
-        insights: aiResponse.insights || [],
-        studyTips: aiResponse.study_tips || aiResponse.studyTips || [],
-        relatedConcepts: aiResponse.related_concepts || aiResponse.relatedConcepts || [],
-        extractedText: aiResponse.extracted_text || '',
-        model: this.defaultModel,
-        modelVersion: 'latest',
-        processingTime: processingTime,
-        tokensUsed: tokensUsed,
-      };
-      
-      logger.info(`Image analysis completed in ${processingTime}ms`);
-      return result;
-      
     } catch (error) {
-      logger.error('Image analysis failed:', error);
-      throw new Error(`Image analysis failed: ${error.message}`);
+      logger.warn('Failed to parse AI response as JSON, attempting text extraction');
+      
+      // Fallback: extract analysis and suggestions from text
+      const analysis = this.extractAnalysisFromText(response);
+      const suggestions = this.extractSuggestionsFromText(response);
+      
+      return { analysis, suggestions };
     }
   }
 
   /**
-   * Generate study questions based on content
-   * @param {string} content - Content to generate questions for
-   * @param {Object} options - Question generation options
-   * @returns {Promise<Array>} Generated questions
+   * Extract analysis from unstructured text response
+   * @param {string} text - AI response text
+   * @returns {string} Extracted analysis
    */
-  async generateStudyQuestions(content, options = {}) {
-    try {
-      const { subject = 'general', difficulty = 'intermediate', count = 5 } = options;
-      
-      const response = await this.openai.chat.completions.create({
-        model: this.defaultModel,
-        messages: [
-          {
-            role: 'system',
-            content: `You are an educational content creator. Generate ${count} study questions based on the provided content for ${difficulty} level ${subject} students.`,
-          },
-          {
-            role: 'user',
-            content: `Generate study questions for this content:\n\n${content}\n\nProvide response in JSON format: {"questions": [{"question": "...", "type": "multiple_choice|short_answer|essay", "difficulty": "easy|medium|hard"}]}`,
-          },
-        ],
-        response_format: { type: "json_object" },
+  extractAnalysisFromText(text) {
+    // Look for analysis section
+    const analysisMatch = text.match(/analysis['":]?\s*['"](.*?)['"]/is) ||
+                         text.match(/overall.*?assessment['":]?\s*['"](.*?)['"]/is) ||
+                         text.match(/^(.*?)(?:suggestions?|recommendations?)/is);
+    
+    return analysisMatch ? analysisMatch[1].trim() : text.substring(0, 500) + '...';
+  }
+
+  /**
+   * Extract suggestions from unstructured text response
+   * @param {string} text - AI response text
+   * @returns {Array<Object>} Extracted suggestions
+   */
+  extractSuggestionsFromText(text) {
+    const suggestions = [];
+    
+    // Look for numbered or bulleted suggestions
+    const suggestionMatches = text.match(/(?:\d+\.|[-*])\s*(.+?)(?=\d+\.|[-*]|$)/gs);
+    
+    if (suggestionMatches) {
+      suggestionMatches.forEach(match => {
+        const content = match.replace(/^\d+\.|\s*[-*]\s*/, '').trim();
+        if (content.length > 10) {
+          suggestions.push({
+            category: 'general',
+            content,
+            priority: 'medium'
+          });
+        }
       });
-      
-      const result = this.parseJSONResponse(response.choices[0]?.message?.content);
-      return result.questions || [];
-      
-    } catch (error) {
-      logger.error('Question generation failed:', error);
-      throw new Error(`Question generation failed: ${error.message}`);
     }
-  }
-
-  /**
-   * Get AI model information and capabilities
-   * @returns {Object} Model information
-   */
-  getModelInfo() {
-    return {
-      model: this.defaultModel,
-      maxTokens: this.maxTokens,
-      temperature: this.temperature,
-      capabilities: [
-        'text_analysis',
-        'image_analysis',
-        'educational_content',
-        'question_generation',
-        'multi_language',
-        'json_output',
-      ],
-      supportedSubjects: [
-        'mathematics',
-        'physics',
-        'chemistry',
-        'biology',
-        'computer_science',
-        'history',
-        'literature',
-        'geography',
-        'economics',
-        'psychology',
-        'general',
-      ],
-    };
-  }
-
-  /**
-   * Test AI connectivity and basic functionality
-   * @returns {Promise<Object>} Test result
-   */
-  async testConnection() {
-    try {
-      const response = await this.openai.chat.completions.create({
-        model: this.defaultModel,
-        messages: [
-          {
-            role: 'user',
-            content: 'Respond with {"status": "ok", "message": "AI processor is working correctly"} in JSON format.',
-          },
-        ],
-        max_tokens: 50,
-        response_format: { type: "json_object" },
-      });
-      
-      return this.parseJSONResponse(response.choices[0]?.message?.content);
-    } catch (error) {
-      logger.error('AI connection test failed:', error);
-      throw error;
-    }
+    
+    return suggestions;
   }
 }
 
-export default new AIProcessor();
+module.exports = new AIProcessor();

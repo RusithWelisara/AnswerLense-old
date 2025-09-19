@@ -1,107 +1,55 @@
-import rateLimit from 'express-rate-limit';
-import environment from '../config/environment.js';
-import logger from '../utils/logger.js';
+const rateLimit = require('express-rate-limit');
+const logger = require('../utils/logger');
 
-/**
- * Rate limiting middleware configuration
- * Protects API endpoints from abuse and spam
- */
-
-// General rate limiter for all endpoints
-export const generalLimiter = rateLimit({
-  windowMs: environment.RATE_LIMIT_WINDOW, // 15 minutes
-  max: environment.RATE_LIMIT_MAX_REQUESTS, // 100 requests per window
-  message: {
-    success: false,
-    error: 'Too many requests from this IP, please try again later.',
-    retryAfter: Math.ceil(environment.RATE_LIMIT_WINDOW / 1000 / 60), // minutes
-  },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  skip: (req) => {
-    // Skip rate limiting for health checks in development
-    if (environment.isDevelopment() && req.path === '/api/health') {
-      return true;
-    }
-    return false;
-  },
-  handler: (req, res) => {
-    logger.warn(`Rate limit exceeded for IP: ${req.ip} on ${req.originalUrl}`);
-    res.status(429).json({
-      success: false,
+// Create different rate limiters for different endpoints
+const createRateLimiter = (options = {}) => {
+  const defaultOptions = {
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
+    message: {
       error: 'Too many requests from this IP, please try again later.',
-      retryAfter: Math.ceil(environment.RATE_LIMIT_WINDOW / 1000 / 60), // minutes
-    });
-  },
-});
+      retryAfter: Math.ceil((parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000) / 1000)
+    },
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    handler: (req, res) => {
+      logger.warn(`Rate limit exceeded for IP: ${req.ip}, endpoint: ${req.path}`);
+      res.status(429).json(defaultOptions.message);
+    },
+    skip: (req) => {
+      // Skip rate limiting for health checks
+      return req.path === '/health' || req.path === '/api/health';
+    }
+  };
 
-// Stricter rate limiter for authentication endpoints
-export const authLimiter = rateLimit({
+  return rateLimit({ ...defaultOptions, ...options });
+};
+
+// General rate limiter
+const generalLimiter = createRateLimiter();
+
+// Strict rate limiter for upload endpoints
+const uploadLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts per window
+  max: 10, // limit each IP to 10 uploads per 15 minutes
   message: {
-    success: false,
-    error: 'Too many authentication attempts, please try again later.',
-    retryAfter: 15, // minutes
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  skipSuccessfulRequests: true, // Don't count successful requests
-  handler: (req, res) => {
-    logger.warn(`Auth rate limit exceeded for IP: ${req.ip} on ${req.originalUrl}`);
-    res.status(429).json({
-      success: false,
-      error: 'Too many authentication attempts, please try again later.',
-      retryAfter: 15
-    });
-  },
+    error: 'Too many file uploads from this IP, please try again later.',
+    retryAfter: 900 // 15 minutes in seconds
+  }
 });
 
-// Rate limiter for file upload endpoints
-export const uploadLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 10, // 10 uploads per window
+// Feedback rate limiter
+const feedbackLimiter = createRateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5, // limit each IP to 5 feedback submissions per minute
   message: {
-    success: false,
-    error: 'Too many file uploads, please try again later.',
-    retryAfter: 10, // minutes
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req, res) => {
-    logger.warn(`Upload rate limit exceeded for IP: ${req.ip} on ${req.originalUrl}`);
-    res.status(429).json({
-      success: false,
-      error: 'Too many file uploads, please try again later.',
-      retryAfter: 10
-    });
-  },
+    error: 'Too many feedback submissions, please try again later.',
+    retryAfter: 60
+  }
 });
 
-// Rate limiter for AI analysis endpoints (more restrictive)
-export const analysisLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 20, // 20 analysis requests per hour
-  message: {
-    success: false,
-    error: 'Analysis limit reached. Please wait before requesting more analyses.',
-    retryAfter: 60, // minutes
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req, res) => {
-    logger.warn(`Analysis rate limit exceeded for IP: ${req.ip} on ${req.originalUrl}`);
-    res.status(429).json({
-      success: false,
-      error: 'Analysis limit reached. Please wait before requesting more analyses.',
-      retryAfter: 60
-    });
-  },
-});
-
-export default {
+module.exports = {
   generalLimiter,
-  authLimiter,
   uploadLimiter,
-  analysisLimiter,
+  feedbackLimiter
 };
