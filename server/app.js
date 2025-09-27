@@ -23,16 +23,19 @@ app.use(helmet({
 // CORS configuration
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true);
-    
+
     const allowedOrigins = [
       process.env.FRONTEND_URL,
       process.env.DEV_FRONTEND_URL,
       'https://answerlense.netlify.app',
-      'http://localhost:5173',
-      'http://localhost:3000'
+      'http://localhost:5173/',
+      'http://localhost:3000/'
     ].filter(Boolean);
+
+    console.log('CORS request origin:', origin); //this line was added in the debugging phase.
+
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
