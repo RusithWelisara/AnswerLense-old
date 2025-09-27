@@ -28,11 +28,11 @@ const corsOptions = {
       process.env.FRONTEND_URL,
       process.env.DEV_FRONTEND_URL,
       'https://answerlense.netlify.app',
-      'http://localhost:5173/',
+      'http://localhost:5173',
       'http://localhost:3000'
     ].filter(Boolean);
 
-    console.log('CORS request origin:', origin); //this line was added in the debug phase.
+    console.log('🔍 Incoming CORS request from origin:', origin); //this line was added in the debug phase.
 
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
@@ -40,7 +40,7 @@ const corsOptions = {
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      logger.warn(`CORS blocked request from origin: ${origin}`);
+      logger.warn(`🚫 CORS blocked request from origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
